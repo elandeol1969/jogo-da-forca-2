@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Forca</title>
+    <style>
+        /* Estilos gerais - FULLSCREEN E SEM SCROLL */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1f2833 0%, #0b0c0e 100%);
+            color: #c5c6c7;
+            display: flex;
+            justify-content: center;
+            align-items: center; /* Centraliza o container na tela */
+            height: 100vh; /* Ocupa 100% da altura do viewport */
+            width: 100vw; /* Ocupa 100% da largura do viewport */
+            overflow: hidden; /* Remove barra de rolagem */
+            margin: 0;
+            box-sizing: border-box;
+            padding: 10px; /* Padding ajustável */
+        }
+
+        .container {
+            background-color: #1a1a2e;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 95%;
+            height: 95%; /* Ocupa 95% da altura disponível */
+            max-width: 1000px;
+            display: flex; /* Usa Flexbox para controlar a altura interna */
+            flex-direction: column;
+        }
+
+        /* Título e Controles */
+        h1 {
+            color: #66fcf1;
+            text-align: center;
+            margin-bottom: 10px; /* Reduz margem */
+            font-size: 2rem;
+            text-shadow: 0 0 10px #45a29e80;
+            flex-shrink: 0; /* Não encolhe o título */
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: row; /* Sempre em linha para economizar espaço */
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #0d0d1a;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+            flex-shrink: 0; /* Não encolhe os controles */
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #45a29e;
+            white-space: nowrap;
+        }
+
+        input[type="number"] {
+            padding: 8px;
+            border: 2px solid #0b0c0e;
+            border-radius: 6px;
+            background-color: #272c38;
+            color: #c5c6c7;
+            width: 30px; /* Tamanho reduzido pela metade (de 60px) */
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus {
+            border-color: #66fcf1;
+            outline: none;
+        }
+
+        button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            background-color: #45a29e;
+            color: #0b0c0e;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s, box-shadow 0.3s;
+            box-shadow: 0 3px #2b6b68;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background-color: #66fcf1;
+            box-shadow: 0 3px #45a29e;
+        }
+
+        button:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px #45a29e;
+        }
+
+        /* Área do Jogo - Ocupa o espaço restante */
+        .game-area {
+            flex-grow: 1; /* Ocupa todo o espaço vertical restante */
+            min-height: 0; /* Essencial para flex-grow funcionar corretamente */
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Display da Forca e Palavra (Parte superior na horizontal) */
+        .hangman-display {
+            display: flex;
+            flex-direction: column; /* Coluna por padrão (mobile) */
+            align-items: center;
+            padding: 15px;
+            background-color: #0d0d1a;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            flex-grow: 1; /* Ocupa o máximo de espaço possível, especialmente em desktop */
+            min-height: 0;
+            justify-content: space-around;
+        }
+
+        .word-display {
+            font-size: 2rem; /* Tamanho ajustado para mobile */
+            letter-spacing: 10px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #66fcf1;
+            text-shadow: 0 0 8px #45a29e;
+            text-align: center;
+            word-break: break-all;
+        }
+
+        .guesses-info {
+            width: 100%;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column; /* Para empilhar as mensagens */
+            align-items: center;
+            gap: 8px;
+        }
+
+        .wrong-letters, .message {
+            padding: 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            width: fit-content; /* Ajusta a largura ao conteúdo */
+            text-align: center;
+        }
+
+        /* Área do Teclado (Parte inferior na horizontal) */
+        .keyboard-area {
+            padding: 10px 0;
+            text-align: center;
+            background-color: #0d0d1a;
+            border-radius: 8px;
+            flex-shrink: 0; /* Não encolhe o teclado */
+        }
+
+        .keyboard-area p {
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        /* Botões do teclado ajustados para mobile */
+        .keyboard-area button {
+            width: 8vw; /* Largura fluida baseada no viewport */
+            max-width: 40px;
+            height: 8vw;
+            max-height: 40px;
+            margin: 0.5vw;
+            font-size: 0.8rem;
+            aspect-ratio: 1 / 1; /* Mantém o botão quadrado */
+        }
+
+        /* --- Desenho da Forca - Escala com a tela --- */
+        .hangman-structure {
+            width: 120px; /* Largura base para mobile */
+            height: 180px; /* Altura base para mobile */
+            position: relative;
+            margin: 10px auto 20px;
+            border-bottom: 4px solid #c5c6c7; /* Base */
+        }
+
+        /* Estrutura */
+        .h-post { position: absolute; top: 0; left: 10px; width: 4px; height: 100%; background-color: #c5c6c7; }
+        .h-beam { position: absolute; top: 0; left: 10px; width: 80px; height: 4px; background-color: #c5c6c7; }
+        .h-rope { position: absolute; top: 0; right: 25px; width: 3px; height: 20px; background-color: #c5c6c7; }
+
+        /* Partes do corpo - Ajustadas para mobile */
+        .h-part {
+            position: absolute;
+            background-color: #ff3333;
+            border-radius: 50%;
+            display: none; /* Escondido por padrão */
+        }
+
+        .h-head { top: 20px; right: 18px; width: 25px; height: 25px; border: 2px solid #ff3333; background: transparent; border-radius: 50%; }
+        .h-body { top: 45px; right: 29px; width: 2px; height: 35px; border-radius: 0; }
+        .h-arm-l { top: 50px; right: 27px; width: 25px; height: 2px; transform: rotate(45deg); transform-origin: left center; border-radius: 0;}
+        .h-arm-r { top: 50px; right: 8px; width: 25px; height: 2px; transform: rotate(-45deg); transform-origin: right center; border-radius: 0;}
+        .h-leg-l { top: 78px; right: 27px; width: 25px; height: 2px; transform: rotate(-45deg); transform-origin: left center; border-radius: 0;}
+        .h-leg-r { top: 78px; right: 8px; width: 25px; height: 2px; transform: rotate(45deg); transform-origin: right center; border-radius: 0;}
+        .h-face-x { top: 26px; right: 24px; width: 13px; height: 13px; font-size: 13px; background: none; color: #ff3333; border-radius: 0; display: flex; justify-content: center; align-items: center;}
+        .h-tear { top: 30px; right: 16px; width: 2px; height: 4px; background-color: #45a29e; border-radius: 50%; } /* Lágrima - Tentativa 8 */
+
+
+        /* Media Queries para Desktop (Layout em Grid de 2 colunas) */
+        @media (min-width: 768px) {
+            h1 { font-size: 2.5rem; }
+
+            .controls { padding: 15px; }
+
+            .container {
+                display: grid;
+                grid-template-columns: 2fr 1fr; /* Coluna do jogo (2) e Forca (1) */
+                grid-template-rows: auto auto 1fr; /* Título, Controles, Conteúdo */
+                gap: 20px;
+            }
+
+            h1 { grid-column: 1 / 3; }
+            .controls { grid-column: 1 / 3; }
+
+            .game-area {
+                grid-column: 1 / 2;
+                flex-grow: 1;
+                /* Reverte para a estrutura original de coluna (game-area contém palavra e teclado) */
+            }
+
+            .hangman-display {
+                grid-column: 2 / 3;
+                flex-direction: column; /* Volta a ser coluna no desktop */
+                justify-content: center;
+            }
+
+            .word-display {
+                font-size: 3.5rem; /* Aumenta o texto para desktop */
+                letter-spacing: 15px;
+            }
+
+            .guesses-info {
+                flex-direction: row; /* Volta a ser linha para desktop */
+                justify-content: space-around;
+                gap: 0; /* Remove gap */
+            }
+            .wrong-letters, .message {
+                font-size: 1rem;
+            }
+            .keyboard-area p {
+                font-size: 1rem;
+            }
+
+            /* Restaura o tamanho dos botões do teclado para desktop */
+            .keyboard-area button {
+                width: 40px;
+                height: 40px;
+                margin: 4px;
+                font-size: 1rem;
+            }
+
+            /* --- Restaura o tamanho da forca para desktop --- */
+            .hangman-structure {
+                width: 150px;
+                height: 250px;
+                margin: 20px auto 30px;
+                border-bottom: 5px solid #c5c6c7;
+            }
+
+            .h-post { left: 10px; width: 5px; }
+            .h-beam { left: 10px; width: 100px; height: 5px; }
+            .h-rope { top: 0; right: 40px; width: 5px; height: 25px; }
+
+            /* Partes do corpo - Ajustadas para desktop */
+            .h-head { top: 25px; right: 28px; width: 30px; height: 30px; border: 3px solid #ff3333; }
+            .h-body { top: 58px; right: 42px; width: 3px; height: 50px; }
+            .h-arm-l { top: 65px; right: 40px; width: 30px; height: 3px; }
+            .h-arm-r { top: 65px; right: 15px; width: 30px; height: 3px; }
+            .h-leg-l { top: 105px; right: 40px; width: 30px; height: 3px; }
+            .h-leg-r { top: 105px; right: 15px; width: 30px; height: 3px; }
+            .h-face-x { top: 35px; right: 35px; width: 16px; height: 16px; font-size: 16px; }
+            .h-tear { top: 40px; right: 26px; width: 3px; height: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Jogo da Forca - Escolha o Tamanho</h1>
+
+        <div class="controls">
+            <div class="input-group">
+                <label for="wordLength">Nº de Letras (5 a 10):</label>
+                <input type="number" id="wordLength" value="5" min="5" max="10">
+            </div>
+            <button id="startGame">INICIAR JOGO</button>
+        </div>
+
+        <div class="game-area" id="gameArea">
+            <div class="hangman-display">
+                <div class="hangman-structure">
+                    <!-- Estrutura da Forca --><div class="h-post"></div>
+                    <div class="h-beam"></div>
+                    <div class="h-rope"></div>
+
+                    <!-- Partes do Corpo (8 tentativas) --><div class="h-part h-head" id="h-head"></div>       <!-- 1 --><div class="h-part h-body" id="h-body"></div>       <!-- 2 --><div class="h-part h-arm-l" id="h-arm-l"></div>     <!-- 3 --><div class="h-part h-arm-r" id="h-arm-r"></div>     <!-- 4 --><div class="h-part h-leg-l" id="h-leg-l"></div>     <!-- 5 --><div class="h-part h-leg-r" id="h-leg-r"></div>     <!-- 6 --><div class="h-part h-face-x" id="h-face-x">:(</div> <!-- 7 (Morte) --><div class="h-part h-tear" id="h-tear"></div>       <!-- 8 (Detalhe) --></div>
+
+                <div class="word-display" id="wordDisplay"></div>
+
+                <div class="guesses-info">
+                    <span id="message" class="message">Escolha o número de letras para começar.</span>
+                    <span id="wrongLetters" class="wrong-letters"></span>
+                </div>
+            </div>
+
+            <div class="keyboard-area">
+                <p>Tentativas erradas: </p>
+                <div id="keyboardButtons">
+                    <!-- Botões do teclado serão inseridos aqui pelo JS --></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Variáveis de Estado Global
+        let selectedWord = '';
+        let hiddenWord = [];
+        let wrongGuesses = 0;
+        let guessedLetters = new Set();
+        const MAX_WRONG_GUESSES = 8;
+        let gameActive = false;
+
+        // Estrutura de palavras em português, categorizadas por tamanho
+        const words = {
+            5: ["PRATO", "LIVRO", "MESA", "CARRO", "FACA", "IDEIA", "AMIGO", "TEMPO", "ONDE", "FORTE"],
+            6: ["JANELA", "ESCOLA", "CHUVA", "FLORESTA", "PAREDE", "DINHEIRO", "CIDADE", "BRASIL", "MUNDO", "PESSOA"],
+            7: ["ELEFANTE", "ABACAXI", "CADERNO", "VIOLAO", "MISTERIO", "AVIAO", "CAVALO", "ESTRELA", "FOGUETE", "JARDIM"],
+            8: ["COMPUTADOR", "CACHORRO", "BANHEIRO", "UNIVERSO", "VIAGEM", "TELEFONE", "ESPETO", "ENIGMA", "PRESENTE", "ESTUDAR"],
+            9: ["BICICLETA", "PROGRAMA", "RESTAURANTE", "ARQUITETO", "FERROVIA", "MERCADO", "PASSAPORTE", "HOSPITAL", "ABORDAREM", "ESCRITOR"],
+            10: ["AUTOMOVEL", "MATEMATICA", "ESTACIONAR", "GOVERNADOR", "JORNALISTA", "ELETRIZAR", "VENTANIA", "FELICIDADE", "COMUNICAR", "CRIATIVO"]
+        };
+
+        // Mapeamento das partes da forca por tentativa errada
+        const hangmanParts = [
+            'h-head',    // Tentativa 1
+            'h-body',    // Tentativa 2
+            'h-arm-l',   // Tentativa 3
+            'h-arm-r',   // Tentativa 4
+            'h-leg-l',   // Tentativa 5
+            'h-leg-r',   // Tentativa 6
+            'h-face-x',  // Tentativa 7 (Rosto Triste)
+            'h-tear'     // Tentativa 8 (Lágrima/Detalhe final)
+        ];
+
+        // Elementos do DOM
+        const wordLengthInput = document.getElementById('wordLength');
+        const startGameButton = document.getElementById('startGame');
+        const wordDisplay = document.getElementById('wordDisplay');
+        const wrongLettersDisplay = document.getElementById('wrongLetters');
+        const messageDisplay = document.getElementById('message');
+        const keyboardButtonsDiv = document.getElementById('keyboardButtons');
+
+        /**
+         * Inicializa um novo jogo.
+         */
+        function initializeGame() {
+            const length = parseInt(wordLengthInput.value);
+
+            if (length < 5 || length > 10 || !words[length]) {
+                showMessage(`Erro: Escolha um número entre 5 e 10 letras.`, 'error');
+                return;
+            }
+
+            // 1. Resetar estado
+            const wordList = words[length];
+            selectedWord = wordList[Math.floor(Math.random() * wordList.length)];
+            hiddenWord = Array(selectedWord.length).fill('_');
+            wrongGuesses = 0;
+            guessedLetters.clear();
+            gameActive = true;
+
+            // 2. Resetar UI
+            updateWordDisplay();
+            updateWrongLettersDisplay();
+            drawHangman(0);
+            createKeyboard();
+            showMessage(`Palavra com ${length} letras. Boa sorte!`, 'info');
+            enableKeyboard(true);
+
+            // Adiciona listener para teclado físico
+            document.removeEventListener('keydown', handleKeyPress);
+            document.addEventListener('keydown', handleKeyPress);
+        }
+
+        /**
+         * Atualiza a exibição da palavra oculta.
+         */
+        function updateWordDisplay() {
+            // Separa com espaço para melhor visualização (letra por letra)
+            wordDisplay.textContent = hiddenWord.join(' ');
+        }
+
+        /**
+         * Atualiza a exibição das letras erradas.
+         */
+        function updateWrongLettersDisplay() {
+            const wrongArray = Array.from(guessedLetters).filter(letter => !selectedWord.includes(letter));
+            wrongLettersDisplay.textContent = wrongArray.join(', ');
+        }
+
+        /**
+         * Lida com o palpite de uma letra.
+         * @param {string} letter - A letra adivinhada.
+         */
+        function handleGuess(letter) {
+            if (!gameActive || guessedLetters.has(letter)) {
+                return;
+            }
+
+            guessedLetters.add(letter);
+            const button = document.getElementById(`btn-${letter}`);
+            if (button) {
+                button.disabled = true;
+            }
+
+            if (selectedWord.includes(letter)) {
+                // Acertou
+                for (let i = 0; i < selectedWord.length; i++) {
+                    if (selectedWord[i] === letter) {
+                        hiddenWord[i] = letter;
+                    }
+                }
+                updateWordDisplay();
+                checkWinLoss();
+            } else {
+                // Errou
+                wrongGuesses++;
+                updateWrongLettersDisplay();
+                drawHangman(wrongGuesses);
+                checkWinLoss();
+            }
+        }
+
+        /**
+         * Cria e exibe os botões do teclado.
+         */
+        function createKeyboard() {
+            keyboardButtonsDiv.innerHTML = '';
+            // Inclui letras com acentos comuns no português (para fins de exibição, mas o jogo só usa maiúsculas sem acento)
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+            letters.forEach(letter => {
+                const button = document.createElement('button');
+                button.textContent = letter;
+                button.id = `btn-${letter}`;
+                button.onclick = () => handleGuess(letter);
+                keyboardButtonsDiv.appendChild(button);
+            });
+        }
+
+        /**
+         * Atualiza o desenho da forca.
+         * @param {number} attempts - Número de tentativas erradas.
+         */
+        function drawHangman(attempts) {
+            // Esconde todas as partes primeiro
+            hangmanParts.forEach(id => {
+                const part = document.getElementById(id);
+                if (part) part.style.display = 'none';
+            });
+
+            // Mostra as partes correspondentes ao número de erros
+            for (let i = 0; i < attempts; i++) {
+                const part = document.getElementById(hangmanParts[i]);
+                if (part) part.style.display = 'block';
+            }
+        }
+
+        /**
+         * Verifica se o jogo foi ganho ou perdido.
+         */
+        function checkWinLoss() {
+            if (!gameActive) return;
+
+            // Condição de Vitória
+            if (!hiddenWord.includes('_')) {
+                showMessage(`🎉 PARABÉNS! Você salvou o boneco! A palavra era: ${selectedWord}`, 'win');
+                gameActive = false;
+                enableKeyboard(false);
+            }
+            // Condição de Derrota
+            else if (wrongGuesses >= MAX_WRONG_GUESSES) {
+                showMessage(`😭 FIM DE JOGO! A palavra era: ${selectedWord}`, 'loss');
+                gameActive = false;
+                enableKeyboard(false);
+            }
+        }
+
+        /**
+         * Exibe uma mensagem no display de mensagens.
+         * @param {string} msg - A mensagem a exibir.
+         * @param {string} type - Tipo da mensagem ('info', 'win', 'loss', 'error').
+         */
+        function showMessage(msg, type) {
+            messageDisplay.textContent = msg;
+            // Remove classes anteriores
+            messageDisplay.classList.remove('info', 'win', 'loss', 'error');
+
+            // Adiciona classe baseada no tipo para estilização
+            let bgColor = '#1a3838'; // info
+            let borderColor = '#45a29e';
+
+            if (type === 'win') {
+                bgColor = '#1a381a';
+                borderColor = '#33cc33';
+                messageDisplay.style.color = '#99ff99';
+            } else if (type === 'loss' || type === 'error') {
+                bgColor = '#381a1a';
+                borderColor = '#ff3333';
+                messageDisplay.style.color = '#ff9999';
+            } else {
+                 messageDisplay.style.color = '#66fcf1';
+            }
+
+            messageDisplay.style.backgroundColor = bgColor;
+            messageDisplay.style.border = `1px solid ${borderColor}`;
+        }
+
+        /**
+         * Ativa ou desativa os botões do teclado e o listener de tecla.
+         * @param {boolean} enable - True para ativar, False para desativar.
+         */
+        function enableKeyboard(enable) {
+            const buttons = keyboardButtonsDiv.querySelectorAll('button');
+            buttons.forEach(button => {
+                if (!guessedLetters.has(button.textContent)) {
+                    button.disabled = !enable;
+                }
+            });
+            if (!enable) {
+                document.removeEventListener('keydown', handleKeyPress);
+            }
+        }
+
+        /**
+         * Handler para pressionamento de teclas do teclado físico.
+         * @param {KeyboardEvent} event
+         */
+        function handleKeyPress(event) {
+            if (!gameActive) return;
+
+            const key = event.key.toUpperCase();
+            // Verifica se é uma letra de A a Z
+            if (key.length === 1 && key >= 'A' && key <= 'Z') {
+                handleGuess(key);
+            }
+        }
+
+        // --- Event Listeners ---
+        startGameButton.addEventListener('click', () => {
+            // Garante que o input está dentro dos limites antes de iniciar
+            let length = parseInt(wordLengthInput.value);
+            if (length < 5) length = 5;
+            if (length > 10) length = 10;
+            wordLengthInput.value = length;
+            initializeGame();
+        });
+
+        // Inicializa o layout do teclado ao carregar a página
+        window.onload = () => {
+            createKeyboard();
+            enableKeyboard(false); // Desativa até o jogo começar
+            wordDisplay.textContent = Array(5).fill('?').join(' '); // Palavra inicial de 5 letras
+        };
+    </script>
+</body>
+</html>
